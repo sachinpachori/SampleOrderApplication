@@ -1,0 +1,29 @@
+version: 0.2 
+
+phases:
+    install:
+        runtime-versions:
+            dotnet: 3.1
+            nodejs: 10
+    pre_build:
+        commands:
+            - dotnet build -c Release ./Sample.Order.BE.Api/Sample.Order.BE.Api.csproj
+            - dotnet test -c Release ./Sample.Order.BE.Api.Test/Sample.Order.BE.Api.Test.csproj --logger trx --results-directory ./testresults
+    build:
+        commands:
+            - dotnet publish -c Release -o ./Sample.Order.BE.Api/bin/Release/netcoreapp3.1/publish ./Sample.Order.BE.Api/Sample.Order.BE.Api.csproj -r linux-x64 /p:PublishReadyToRun=true --self-contained false
+            - node ./transform-serverless-template.js
+            - cd Sample.Order.BE.Api
+            - aws cloudformation package --template-file serverless.template --s3-bucket test-sample-order-service-deploy --output-template-file outputSamTemplate.yml
+artifacts:
+    files:
+        - outputSamTemplate.yml
+    discard-paths: yes
+    base-directory: ./Sample.Order.BE.Api
+
+reports:
+    DotnetTestExamples:
+        file-format: VisualStudioTrx
+        files:
+            - '**/*'
+        base-directory: './testresults'
